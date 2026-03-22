@@ -1,0 +1,3 @@
+session_id,tool_name_list
+query_10,"['Function: get_local_recipe_type', 'Function: fetch_local_recipe', 'Function: search_web', 'Function: search_web', 'Function: check_cfia_recalls', 'Function: modify_recipe', 'Function: prepare_shopping_list']"
+query_20,"['Function: get_local_recipe_type', 'Function: fetch_local_recipe', 'Function: check_cfia_recalls', 'Function: check_cfia_recalls', 'Function: search_web', 'Function: modify_recipe', 'Function: prepare_shopping_list']"
