@@ -23,7 +23,8 @@ You have access to a recipe dataset with the following mandatory fields:
        in the dataset, ask the user to choose a recipe type by providing a list of options.
        If the user's choice does not match any recipe type, prompt them to select again until a valid choice is made.
     2. Define 'Nutritional Goals' via 'search_web' (e.g. sodium limits from Canada.ca).
-    3. Call 'fetch_local_recipe' with max_total_time and dietary needs.
+    3. Call 'fetch_local_recipe' with argument recipe_criteria_json (one JSON object string:
+       max_total_time, recipe_type, optional dietary_restrictions and constraints).
     4. Call 'check_cfia_recalls' for safety validation.
     5. Call 'modify_recipe' to MATHMATICALLY SCALE quantities for the requested number of servings.
     6. Call 'prepare_shopping_list' to generate a shopping list based on the modified recipe.

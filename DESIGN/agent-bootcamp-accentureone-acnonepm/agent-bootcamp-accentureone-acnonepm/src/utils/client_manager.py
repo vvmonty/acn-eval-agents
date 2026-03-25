@@ -53,7 +53,11 @@ class AsyncClientManager:
     def openai_client(self) -> AsyncOpenAI:
         """Get or create OpenAI client."""
         if self._openai_client is None:
-            self._openai_client = AsyncOpenAI()
+            cfg = self.configs
+            self._openai_client = AsyncOpenAI(
+                api_key=cfg.openai_api_key,
+                base_url=cfg.openai_base_url,
+            )
             self._initialized = True
         return self._openai_client
 
@@ -69,6 +73,7 @@ class AsyncClientManager:
     def knowledgebase(self) -> AsyncWeaviateKnowledgeBase:
         """Get or create knowledge base instance."""
         if self._knowledgebase is None:
+            cfg = self.configs
             self._knowledgebase = AsyncWeaviateKnowledgeBase(
                 self.weaviate_client,
                 collection_name=self.configs.weaviate_collection_name,

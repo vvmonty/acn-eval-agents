@@ -1,6 +1,7 @@
 """Test cases for Weaviate integration."""
 
 import json
+import os
 from typing import AsyncGenerator
 
 import pytest
@@ -106,8 +107,12 @@ async def test_web_search_with_gemini_grounding(configs: Configs) -> None:
     # Skip test if the environment variable is not set
     # We do this because these are optional env vars and not everyone
     # running the tests may have them set.
-    if not (configs.web_search_base_url and configs.web_search_api_key):
-        pytest.skip("WEB_SEARCH_BASE_URL and WEB_SEARCH_API_KEY not set in env vars")
+    has_direct = bool(os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"))
+    has_proxy = bool(configs.web_search_base_url and configs.web_search_api_key)
+    if not (has_direct or has_proxy):
+        pytest.skip(
+            "Set GOOGLE_API_KEY (or GEMINI_API_KEY) or WEB_SEARCH_* for web search tests."
+        )
 
     tool_cls = GeminiGroundingWithGoogleSearch()
     response = await tool_cls.get_web_search_grounded_response(

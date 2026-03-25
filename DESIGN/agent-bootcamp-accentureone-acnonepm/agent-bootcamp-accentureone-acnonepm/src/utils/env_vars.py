@@ -5,8 +5,20 @@ configuration values from environment variables. It uses Pydantic for
 type validation and automatic loading from .env files.
 """
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+DEFAULT_GEMINI_OPENAI_BASE_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/openai/"
+)
+
+
+def _with_https_scheme(url: str) -> str:
+    s = url.strip()
+    if not s.startswith(("http://", "https://")):
+        return f"https://{s.lstrip('/')}"
+    return s
 
 
 class Configs(BaseSettings):
@@ -28,20 +40,20 @@ class Configs(BaseSettings):
         model.
     default_worker_model : str, default='gemini-2.5-flash'
         Model name for worker tasks. This is typically a less expensive model.
-    embedding_base_url : str
-        Base URL for embedding API service.
-    embedding_api_key : str
-        API key for embedding service.
+    embedding_base_url : str or None
+        Base URL for embedding API service (optional; required for KB / eval scripts).
+    embedding_api_key : str or None
+        API key for embedding service (optional; required for KB / eval scripts).
     embedding_model_name : str, default='@cf/baai/bge-m3'
         Name of the embedding model.
     weaviate_collection_name : str, default='enwiki_20250520'
         Name of the Weaviate collection to use.
-    weaviate_api_key : str
-        API key for Weaviate cloud instance.
-    weaviate_http_host : str
-        Weaviate HTTP host (must end with .weaviate.cloud).
-    weaviate_grpc_host : str
-        Weaviate gRPC host (must start with grpc- and end with .weaviate.cloud).
+    weaviate_api_key : str or None
+        API key for Weaviate (optional; defaults unset with local fallback in client).
+    weaviate_http_host : str or None
+        Weaviate HTTP host (optional; e.g. ``*.weaviate.cloud`` or omitted for localhost).
+    weaviate_grpc_host : str or None
+        Weaviate gRPC host (optional; e.g. ``grpc-*.weaviate.cloud`` or omitted for localhost).
     weaviate_http_port : int, default=443
         Port for Weaviate HTTP connections.
     weaviate_grpc_port : int, default=443
@@ -79,31 +91,64 @@ class Configs(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", env_ignore_empty=True
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_ignore_empty=True,
+        extra="ignore",
     )
 
-    openai_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    openai_base_url: str = DEFAULT_GEMINI_OPENAI_BASE_URL
     openai_api_key: str = Field(
         validation_alias=AliasChoices(
             "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"
         )
     )
 
+    @field_validator("openai_base_url", mode="before")
+    @classmethod
+    def _normalize_openai_base_url(cls, value: object) -> str:
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return DEFAULT_GEMINI_OPENAI_BASE_URL
+        if not isinstance(value, str):
+            return DEFAULT_GEMINI_OPENAI_BASE_URL
+        return _with_https_scheme(value)
+
+    @field_validator("embedding_base_url", mode="before")
+    @classmethod
+    def _normalize_embedding_base_url(cls, value: object) -> str | None:
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        if not isinstance(value, str):
+            return None
+        return _with_https_scheme(value)
+
+    @field_validator("embedding_api_key", mode="before")
+    @classmethod
+    def _empty_embedding_api_key(cls, value: object) -> str | None:
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        return value if isinstance(value, str) else None
+
+    @field_validator(
+        "weaviate_api_key", "weaviate_http_host", "weaviate_grpc_host", mode="before"
+    )
+    @classmethod
+    def _empty_weaviate_optional(cls, value: object) -> str | None:
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        return value if isinstance(value, str) else None
+
     default_planner_model: str = "gemini-2.5-pro"
     default_worker_model: str = "gemini-2.5-flash"
 
-    embedding_base_url: str
-    embedding_api_key: str
+    embedding_base_url: str | None = None
+    embedding_api_key: str | None = None
     embedding_model_name: str = "@cf/baai/bge-m3"
 
     weaviate_collection_name: str = "enwiki_20250520"
-    weaviate_api_key: str
-    weaviate_http_host: str = Field(
-        pattern=r"^.*\.weaviate\.cloud$"  # ends with .weaviate.cloud
-    )
-    weaviate_grpc_host: str = Field(
-        pattern=r"^grpc-.*\.weaviate\.cloud$"  # starts with grpc- ends with .weaviate.cloud
-    )
+    weaviate_api_key: str | None = None
+    weaviate_http_host: str | None = None
+    weaviate_grpc_host: str | None = None
     weaviate_http_port: int = 443
     weaviate_grpc_port: int = 443
     weaviate_http_secure: bool = True

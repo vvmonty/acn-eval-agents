@@ -4,6 +4,7 @@ import asyncio
 from typing import Any, AsyncGenerator
 
 import agents
+from agents import set_tracing_disabled
 from dotenv import load_dotenv
 from gradio.components.chatbot import ChatMessage
 from langfuse import propagate_attributes
@@ -16,9 +17,8 @@ from src.utils import (
 )
 from src.utils.client_manager import AsyncClientManager
 from src.utils.langfuse.shared_client import langfuse_client
+from src.food_planner.food_agent import FoodPlanner
 
-
-from food_agent import FoodPlanner
 import logging
 import traceback
 
@@ -86,7 +86,7 @@ async def _main_wrapper(query):
             model=planner_model, openai_client=client_manager.openai_client
         ),
         
-        model_settings=agents.ModelSettings(parallel_tool_calls=False),
+        model_settings=agents.ModelSettings(),
     )
 
     _ = await _main(main_agent, query)
@@ -117,6 +117,7 @@ async def _run_query():
 
 if __name__ == "__main__":
     load_dotenv(verbose=True)
+    set_tracing_disabled(True)
 
     # Set logging level and suppress some noisy logs from dependencies
     set_up_logging()

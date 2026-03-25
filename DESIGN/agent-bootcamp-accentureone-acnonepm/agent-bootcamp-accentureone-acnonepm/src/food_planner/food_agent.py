@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field, ConfigDict
 from fractions import Fraction
 from langfuse import observe
 
-from agents import Agent, function_tool 
+from agents import Agent, function_tool
+
+from src.utils.tools.gemini_grounding import google_search_grounded_sync
 
 # Path to the recipe dataset
 RECIPE_DATA_PATH = os.path.join(os.path.dirname(__file__), '../../data/recipes.csv')
@@ -32,8 +34,18 @@ class RecipeParams(BaseModel):
 
 # --- 2. OPERATIONAL TOOLS ---
 @observe()
-def fetch_local_recipe(params: RecipeParams) -> str:
-    """Queries the local CSV for recipes. Returns 'NO_MATCH' if none satisfy criteria."""
+def fetch_local_recipe(recipe_criteria_json: str) -> str:
+    """Queries the local CSV for recipes. Returns 'NO_MATCH' if none satisfy criteria.
+
+    recipe_criteria_json: JSON object with required keys max_total_time (int),
+    recipe_type (str); optional dietary_restrictions (list of str) and
+    constraints (object with optional numeric sodium, calories, fat, protein, carbohydrates).
+    """
+    try:
+        params = RecipeParams.model_validate_json(recipe_criteria_json)
+    except Exception as exc:
+        return f"ERROR: Invalid recipe_criteria_json: {exc}"
+
     if not os.path.exists(RECIPE_DATA_PATH):
         return "NO_MATCH: Local database file missing. Search the web instead."
     
@@ -330,17 +342,16 @@ def prepare_shopping_list(recipe_json: str) -> str:
 @dataclass
 class FoodPlanner(Agent):
     def __post_init__(self):
-        try:
-            from src.utils.tools.gemini_grounding import GeminiGroundingWithGoogleSearch
-            self.tools.append(function_tool(observe(
-                GeminiGroundingWithGoogleSearch().get_web_search_grounded_response), 
+        super().__post_init__()
+        self.tools.append(
+            function_tool(
+                google_search_grounded_sync,
                 name_override="search_web",
-                strict_mode=True
-            ))
-        except ImportError: pass
-        
-        self.tools.append(function_tool(get_local_recipe_type))
-        self.tools.append(function_tool(fetch_local_recipe))
-        self.tools.append(function_tool(check_cfia_recalls))
-        self.tools.append(function_tool(modify_recipe))
-        self.tools.append(function_tool(prepare_shopping_list))
+                strict_mode=False,
+            )
+        )
+        self.tools.append(function_tool(get_local_recipe_type, strict_mode=False))
+        self.tools.append(function_tool(fetch_local_recipe, strict_mode=False))
+        self.tools.append(function_tool(check_cfia_recalls, strict_mode=False))
+        self.tools.append(function_tool(modify_recipe, strict_mode=False))
+        self.tools.append(function_tool(prepare_shopping_list, strict_mode=False))

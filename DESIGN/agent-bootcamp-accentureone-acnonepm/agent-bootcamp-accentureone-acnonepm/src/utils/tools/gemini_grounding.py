@@ -2,16 +2,23 @@
 
 import asyncio
 import os
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from urllib.parse import urlparse
 
 import backoff
 import httpx
+from google import genai
+from google.genai import types
 from pydantic import BaseModel
 from pydantic.fields import Field
 
 
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
+
+def _gemini_developer_api_key() -> str | None:
+    """API key for the Gemini developer API (Google AI Studio)."""
+    return os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 
 
 class ModelSettings(BaseModel):
@@ -35,28 +42,12 @@ class GroundedResponse(BaseModel):
 
 
 class GeminiGroundingWithGoogleSearch:
-    """Tool for fetching Google Search grounded responses from Gemini via a proxy.
+    """Google Search–grounded answers via Gemini.
 
-    Parameters
-    ----------
-    base_url : str, optional, default=None
-        Base URL for the Gemini proxy. Defaults to the value of the
-        ``WEB_SEARCH_BASE_URL`` environment variable.
-    api_key : str, optional, default=None
-        API key for the Gemini proxy. Defaults to the value of the
-        ``WEB_SEARCH_API_KEY`` environment variable.
-    model_settings : ModelSettings, optional, default=None
-        Settings for the Gemini model used for web search.
-    max_concurrency : int, optional, default=5
-        Maximum number of concurrent Gemini requests.
-    timeout : int, optional, default=300
-        Timeout for requests to the server.
-
-    Raises
-    ------
-    ValueError
-        If the ``WEB_SEARCH_API_KEY`` environment variable is not set or the
-        ``WEB_SEARCH_BASE_URL`` environment variable is not set.
+    - **Direct**: ``GOOGLE_API_KEY`` or ``GEMINI_API_KEY`` — native ``google.genai`` with
+      the Google Search tool (recommended for bootcamp / AI Studio).
+    - **Proxy**: ``WEB_SEARCH_BASE_URL`` + ``WEB_SEARCH_API_KEY`` — HTTP proxy to a
+      grounding endpoint (legacy).
     """
 
     def __init__(
@@ -68,57 +59,96 @@ class GeminiGroundingWithGoogleSearch:
         max_concurrency: int = 5,
         timeout: int = 300,
     ) -> None:
-        self.base_url = base_url or os.getenv("WEB_SEARCH_BASE_URL")
-        self.api_key = api_key or os.getenv("WEB_SEARCH_API_KEY")
         self.model_settings = model_settings or ModelSettings()
-
-        if self.api_key is None:
-            raise ValueError("WEB_SEARCH_API_KEY environment variable is not set.")
-        if self.base_url is None:
-            raise ValueError("WEB_SEARCH_BASE_URL environment variable is not set.")
-
         self._semaphore = asyncio.Semaphore(max_concurrency)
 
+        dev_key = _gemini_developer_api_key()
+        self.base_url = base_url or os.getenv("WEB_SEARCH_BASE_URL")
+        self.api_key = api_key or os.getenv("WEB_SEARCH_API_KEY")
+
+        if dev_key:
+            self._mode: Literal["direct", "proxy"] = "direct"
+            self._genai_client = genai.Client(api_key=dev_key)
+            self._client = None
+            self._endpoint = ""
+            return
+
+        if self.api_key is None:
+            raise ValueError(
+                "Set GOOGLE_API_KEY or GEMINI_API_KEY for direct Gemini search "
+                "grounding, or set WEB_SEARCH_API_KEY for proxy mode."
+            )
+        if self.base_url is None:
+            raise ValueError(
+                "WEB_SEARCH_BASE_URL is not set (required for proxy mode when no "
+                "GOOGLE_API_KEY / GEMINI_API_KEY is set)."
+            )
+
+        self._mode = "proxy"
+        self._genai_client = None
         self._client = httpx.AsyncClient(
             timeout=timeout, headers={"X-API-Key": self.api_key}
         )
         self._endpoint = f"{self.base_url.strip('/')}/api/v1/grounding_with_search"
 
+    def _direct_generate_sync(self, query: str) -> GroundedResponse:
+        """Gemini + Google Search (sync; use from thread pool in async callers)."""
+        assert self._genai_client is not None
+        ms = self.model_settings
+        config = types.GenerateContentConfig(
+            tools=[types.Tool(google_search=types.GoogleSearch())],
+            temperature=ms.temperature,
+            max_output_tokens=ms.max_output_tokens,
+            seed=ms.seed,
+        )
+        response = self._genai_client.models.generate_content(
+            model=ms.model,
+            contents=query,
+            config=config,
+        )
+        response_json = cast(
+            dict[str, Any],
+            response.model_dump(mode="json", exclude_none=True),
+        )
+        candidates = response_json.get("candidates")
+        first = candidates[0] if candidates else None
+        grounding_metadata: dict[str, Any] | None = (
+            first.get("grounding_metadata") if isinstance(first, dict) else None
+        )
+        web_search_queries: list[str] = []
+        if isinstance(grounding_metadata, dict):
+            raw_q = grounding_metadata.get("web_search_queries")
+            if isinstance(raw_q, list):
+                web_search_queries = [str(x) for x in raw_q]
+
+        text_with_citations, citations = add_citations(response_json)
+        if not text_with_citations.strip():
+            text_with_citations = (getattr(response, "text", None) or "").strip()
+
+        return GroundedResponse(
+            text_with_citations=text_with_citations,
+            web_search_queries=web_search_queries,
+            citations=citations,
+        )
+
+    def grounded_search_text_sync(self, query: str) -> str:
+        """Return grounded text for a synchronous ``agents.function_tool`` (direct API only)."""
+        if self._mode != "direct":
+            raise RuntimeError(
+                "grounded_search_text_sync needs GOOGLE_API_KEY / GEMINI_API_KEY. "
+                "For proxy mode use get_web_search_grounded_response."
+            )
+        return self._direct_generate_sync(query).text_with_citations or ""
+
     async def get_web_search_grounded_response(self, query: str) -> GroundedResponse:
-        """Get Google Search grounded response to query from Gemini model.
+        """Google Search grounded response (async)."""
+        if self._mode == "direct":
+            async with self._semaphore:
+                return await asyncio.to_thread(self._direct_generate_sync, query)
 
-        This function calls a Gemini model with Google Search tool enabled. How
-        it works [1]_:
-            - The model analyzes the input query and determines if a Google Search
-              can improve the answer.
-            - If needed, the model automatically generates one or multiple search
-              queries and executes them.
-            - The model processes the search results, synthesizes the information,
-              and formulates a response.
-            - The API returns a final, user-friendly response that is grounded in
-              the search results.
-
-        Parameters
-        ----------
-        query : str
-            Query to pass to Gemini.
-
-        Returns
-        -------
-        GroundedResponse
-            Response returned by Gemini. This includes the text with citations added,
-            the web search queries executed (expanded from the input query), and a
-            mapping of the citation ids to the website where the citation is from.
-
-        References
-        ----------
-        .. [1] https://ai.google.dev/gemini-api/docs/google-search#how_grounding_with_google_search_works
-        """
-        # Payload
         payload = self.model_settings.model_dump(exclude_unset=True)
         payload["query"] = query
 
-        # Call Gemini
         response = await self._post_payload(payload)
 
         try:
@@ -132,9 +162,11 @@ class GeminiGroundingWithGoogleSearch:
         grounding_metadata: dict[str, Any] | None = (
             candidates[0].get("grounding_metadata") if candidates else None
         )
-        web_search_queries: list[str] = (
-            grounding_metadata["web_search_queries"] if grounding_metadata else []
-        )
+        web_search_queries: list[str] = []
+        if isinstance(grounding_metadata, dict):
+            raw_q = grounding_metadata.get("web_search_queries")
+            if isinstance(raw_q, list):
+                web_search_queries = [str(x) for x in raw_q]
 
         text_with_citations, citations = add_citations(response_json)
 
@@ -149,7 +181,7 @@ class GeminiGroundingWithGoogleSearch:
         (
             httpx.TimeoutException,
             httpx.NetworkError,
-            httpx.HTTPStatusError,  # only retry codes in RETRYABLE_STATUS
+            httpx.HTTPStatusError,
         ),
         giveup=lambda exc: (
             isinstance(exc, httpx.HTTPStatusError)
@@ -159,30 +191,45 @@ class GeminiGroundingWithGoogleSearch:
         max_tries=5,
     )
     async def _post_payload(self, payload: dict[str, object]) -> httpx.Response:
-        """Send a POST request to the endpoint with the given payload."""
         async with self._semaphore:
             return await self._client.post(self._endpoint, json=payload)
 
 
-def add_citations(response: dict[str, object]) -> tuple[str, dict[int, str]]:
-    """Add citations to the Gemini response.
+_DEFAULT_GROUNDING: GeminiGroundingWithGoogleSearch | None = None
 
-    Code based on example in [1]_.
 
-    Parameters
-    ----------
-    response : dict of str to object
-        JSON response returned by Gemini.
+def _model_settings_from_gemini_grounding_env() -> ModelSettings:
+    raw = os.getenv("GEMINI_GROUNDING_MODEL", "").strip()
+    if raw in ("gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"):
+        return ModelSettings(
+            model=cast(
+                Literal["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+                raw,
+            )
+        )
+    return ModelSettings()
 
-    Returns
-    -------
-    tuple[str, dict[int, str]]
-        The synthesized text and a mapping of citation ids to source labels.
 
-    References
-    ----------
-    .. [1] https://ai.google.dev/gemini-api/docs/google-search#attributing_sources_with_inline_citations
+def _default_grounding_singleton() -> GeminiGroundingWithGoogleSearch:
+    global _DEFAULT_GROUNDING
+    if _DEFAULT_GROUNDING is None:
+        _DEFAULT_GROUNDING = GeminiGroundingWithGoogleSearch(
+            model_settings=_model_settings_from_gemini_grounding_env(),
+        )
+    return _DEFAULT_GROUNDING
+
+
+def google_search_grounded_sync(query: str) -> str:
+    """Web search tool body: uses :class:`GeminiGroundingWithGoogleSearch` (direct API).
+
+    Register with ``agents.function_tool(..., name_override="search_web")`` beside
+    OpenAI-compat chat. Same API key as Gemini; grounding runs via native ``genai``.
     """
+    return _default_grounding_singleton().grounded_search_text_sync(query)
+
+
+def add_citations(response: dict[str, object]) -> tuple[str, dict[int, str]]:
+    """Add inline citation links to grounded text."""
     candidates = response.get("candidates") if isinstance(response, dict) else None
     if not candidates:
         return "", {}
@@ -191,11 +238,13 @@ def add_citations(response: dict[str, object]) -> tuple[str, dict[int, str]]:
     content = candidate.get("content") if isinstance(candidate, dict) else {}
     parts = content.get("parts") if isinstance(content, dict) else []
 
-    text = ""
+    text_parts: list[str] = []
     for part in parts if isinstance(parts, list) else []:
-        if isinstance(part, dict) and isinstance(part.get("text"), str):
-            text = part["text"]
-            break
+        if isinstance(part, dict):
+            t = part.get("text")
+            if isinstance(t, str) and t.strip():
+                text_parts.append(t.strip())
+    text = "\n\n".join(text_parts)
     if not text:
         return "", {}
 
@@ -211,8 +260,6 @@ def add_citations(response: dict[str, object]) -> tuple[str, dict[int, str]]:
     if supports and chunks:
         citations, chunk_to_id = _collect_citations(candidate)
 
-    # Sort supports by end_index in descending order to avoid shifting issues
-    # when inserting.
     sorted_supports = sorted(
         (s for s in supports if isinstance(s, dict) and s.get("segment")),
         key=lambda s: s["segment"].get("end_index", 0),

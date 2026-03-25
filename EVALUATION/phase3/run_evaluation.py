@@ -166,10 +166,7 @@ class FoodPlannerTask:
         from food_agent import FoodPlanner
         from src.prompts import FOOD_PLANNER_INSTRUCTIONS
 
-        # Dummy values so FoodPlanner.__post_init__ doesn't raise on
-        # GeminiGroundingWithGoogleSearch construction.
-        os.environ.setdefault("WEB_SEARCH_API_KEY", "dummy-not-used")
-        os.environ.setdefault("WEB_SEARCH_BASE_URL", "http://localhost:9999")
+        # Web search uses GOOGLE_API_KEY / GEMINI_API_KEY via google_search_grounded_sync.
 
         configs = Configs()
         openai_client = AsyncOpenAI(
@@ -212,7 +209,7 @@ class FoodPlannerTask:
                 model=self._planner_model,
                 openai_client=self._openai_client,
             ),
-            model_settings=agents.ModelSettings(parallel_tool_calls=False),
+            model_settings=agents.ModelSettings(),
         )
 
         # Isolated session per item — no context bleed across queries

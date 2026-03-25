@@ -4,6 +4,7 @@ import asyncio
 from typing import Any, AsyncGenerator
 
 import agents
+from agents import set_tracing_disabled
 import gradio as gr
 from dotenv import load_dotenv
 from gradio.components.chatbot import ChatMessage
@@ -19,12 +20,8 @@ from src.utils.agent_session import get_or_create_session
 from src.utils.client_manager import AsyncClientManager
 from src.utils.gradio import COMMON_GRADIO_CONFIG
 from src.utils.langfuse.shared_client import langfuse_client
-from src.utils.tools.gemini_grounding import (
-    GeminiGroundingWithGoogleSearch,
-    ModelSettings,
-)
 
-from food_agent import FoodPlanner
+from src.food_planner.food_agent import FoodPlanner
 import logging
 import traceback
 
@@ -77,6 +74,7 @@ async def _main(
 
 if __name__ == "__main__":
     load_dotenv(verbose=True)
+    set_tracing_disabled(True)
 
     # Set logging level and suppress some noisy logs from dependencies
     set_up_logging()
@@ -96,9 +94,8 @@ if __name__ == "__main__":
         model=agents.OpenAIChatCompletionsModel(
             model=planner_model, openai_client=client_manager.openai_client
         ),
-        # NOTE: enabling parallel tool calls here can sometimes lead to issues with
-        # with invalid arguments being passed to the search agent.
-        model_settings=agents.ModelSettings(parallel_tool_calls=False),
+        # Omit parallel_tool_calls (default) for Gemini OpenAI-compat compatibility.
+        model_settings=agents.ModelSettings(),
     )
 
     demo = gr.ChatInterface(
