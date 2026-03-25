@@ -38,6 +38,7 @@ DESIGN:
     - Tool trajectory is extracted from result.new_items using the raw_item
       function_call type discriminator in the openai-agents SDK.
     - max_concurrency defaults to 3 to avoid Gemini rate limits.
+    - set_tracing_disabled(True): OpenAI Agents hosted tracing is off; use Langfuse for traces.
 """
 
 import asyncio
@@ -84,6 +85,12 @@ FOOD_PLANNER_DIR = DESIGN_ROOT / "src" / "food_planner"
 for p in [str(FOOD_PLANNER_DIR), str(DESIGN_ROOT), str(EVAL_AGENTS_ROOT)]:
     if p not in sys.path:
         sys.path.insert(0, p)
+
+# OpenAI Agents SDK tracing targets platform.openai.com and rejects Gemini keys.
+# Langfuse + Phase 3 evals use other observability paths; disable to avoid 401 spam.
+from agents import set_tracing_disabled
+
+set_tracing_disabled(True)
 
 
 # ──────────────────────────────────────────────────────────────
