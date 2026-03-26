@@ -20,8 +20,7 @@ You have access to a recipe dataset with the following mandatory fields:
     1. Get recipe types via 'get_local_recipe_type' and determine if the user has specified a recipe type that matches
        one of the types in the dataset. In this case match it to the appropriate recipe type in the list of recipe types
        extracted from the dataset. If the user's initial request does not include a recipe type that would match one of
-       in the dataset, ask the user to choose a recipe type by providing a list of options.
-       If the user's choice does not match any recipe type, prompt them to select again until a valid choice is made.
+       in the dataset, choose the closest recipe type.
     2. Define 'Nutritional Goals' via 'search_web' (e.g. sodium limits from Canada.ca).
     3. Call 'fetch_local_recipe' with argument recipe_criteria_json (one JSON object string:
        max_total_time, recipe_type, optional dietary_restrictions and constraints).

@@ -4,11 +4,11 @@
 
 ```
 phase4/
-├── run_evaluation.py         ← full experiment: 3 rule-based + 5 LLM-judge scores
+├── run_evaluation.py         ← full experiment: 3 rule-based + 6 LLM-judge scores
 ├── rubrics/
 │   ├── dietary_compliance.md   ← does recipe respect dietary restrictions?
 │   ├── time_constraint.md      ← does recipe fit within time limit?
-│   ├── recipe_completeness.md  ← is recipe concrete and actionable?
+│   ├── recipe_completeness.md  ← recipe shape category + present + actionable steps
 │   └── serving_size.md         ← does recipe serve correct number of people?
 └── README.md
 ```
@@ -31,10 +31,12 @@ phase4/
 |---|---|---|
 | `dietary_compliance` | dietary_compliance.md | `dietary_compliance` |
 | `time_constraint` | time_constraint.md | `time_constraint` |
-| `recipe_completeness` | recipe_completeness.md | `recipe_present`, `actionable_steps` |
+| `recipe_completeness` | recipe_completeness.md | `recipe_completeness_category`, `recipe_present`, `actionable_steps` |
 | `serving_size` | serving_size.md | `serving_size` |
 
-**Total: 8 scores per item** (3 rule-based + 5 LLM-judge)
+**Total: 9 scores per item** (3 rule-based + 6 LLM-judge metric fields). The
+`recipe_completeness_category` value is a **string** (closed enum); Langfuse or
+terminal summaries may show numeric averages only for 0/1 metrics.
 
 ---
 
@@ -89,12 +91,15 @@ uv run --env-file .env python EVALUATION/phase4/run_evaluation.py \
 =================================================================
 ```
 
+(`recipe_completeness_category` may not appear as a numeric mean in this summary;
+inspect per-item scores in Langfuse.)
+
 ---
 
 ## What to Verify in Langfuse
 
 1. New experiment run `food_planner_v1_full_eval` appears under **FoodPlannerEval**
-2. Each of the 30 items has **8 scores** visible
+2. Each of the 30 items has **9 scores** visible (including categorical category string)
 3. Click a `dietary_multiple` item (e.g. `query_32` — gluten-free + no mushrooms):
    - `dietary_compliance` should be **1** if agent respected both restrictions
 4. Click a `tight_time` item (e.g. `query_86` — 20 min slow-cooker):
@@ -107,11 +112,12 @@ uv run --env-file .env python EVALUATION/phase4/run_evaluation.py \
 
 Each rubric:
 - Is a focused markdown file with a single responsibility
-- Emits **binary metrics (0 or 1)** for clean aggregation
+- Emits **binary metrics (0 or 1)** where noted, except `recipe_completeness_category` (string enum)
 - Includes a mapping table for common restriction/scenario types
 - Instructs the judge to give benefit-of-the-doubt to avoid false failures
 - Uses concise 1-sentence comments to explain each score
 
-The `recipe_completeness` rubric emits **2 metrics** (`recipe_present` and
-`actionable_steps`) because these are distinct quality dimensions.
-All other rubrics emit **1 metric** each.
+The `recipe_completeness` rubric emits **3 metrics**: a categorical
+`recipe_completeness_category` (e.g. `complete_recipe`, `deferral_no_recipe`,
+`constraint_conflict_clarification`) plus binary `recipe_present` and
+`actionable_steps`. All other rubrics emit **1 metric** each.

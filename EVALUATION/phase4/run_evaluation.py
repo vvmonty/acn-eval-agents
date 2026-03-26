@@ -12,8 +12,9 @@ PURPOSE:
     LLM-as-judge (new in Phase 4, using create_llm_as_judge_evaluator):
         dietary_compliance — Recipe respects all stated dietary restrictions
         time_constraint    — Recipe fits within the stated time limit
-        recipe_present     — Output contains a concrete recipe
-        actionable_steps   — Instructions are clear enough to follow
+        recipe_completeness_category — Categorical recipe response shape (string enum)
+        recipe_present     — Output contains a concrete recipe (binary)
+        actionable_steps   — Instructions are clear enough to follow (binary)
         serving_size       — Recipe serves the correct number of people
 
 PASTE TO:
@@ -36,9 +37,9 @@ RUN WITH (from /home/coder/eval-agents/):
         --max-concurrency 3
 
 WHAT TO CHECK AFTER RUNNING:
-    1. Terminal shows experiment summary with 8 score columns
+    1. Terminal shows experiment summary (numeric means may omit categorical scores)
     2. Langfuse > Datasets > FoodPlannerEval shows a new experiment run
-    3. Each item has scores for all 8 metrics
+    3. Each item has scores for all 9 metrics (3 rule + 6 LLM-judge fields)
     4. Compare LLM judge scores vs rule-based scores for consistency
 
 DESIGN:
@@ -329,9 +330,9 @@ async def _main(
             name=experiment_name,
             description=(
                 "Phase 4 full evaluation — FoodPlanner agent on 30 ground truth queries. "
-                "3 rule-based + 5 LLM-as-judge evaluators "
-                "(dietary_compliance, time_constraint, recipe_present, "
-                "actionable_steps, serving_size)."
+                "3 rule-based + 6 LLM-as-judge scores "
+                "(dietary_compliance, time_constraint, recipe_completeness_category, "
+                "recipe_present, actionable_steps, serving_size)."
             ),
             task=task.run,
             evaluators=all_evaluators,
@@ -340,7 +341,7 @@ async def _main(
                 "phase": "4",
                 "agent": "FoodPlanner",
                 "evaluator_types": "rule_based+llm_judge",
-                "rubrics_version": "v1",
+                "rubrics_version": "v2",
             },
         )
     except Exception as exc:
@@ -355,11 +356,12 @@ async def _main(
     print("    required_tools     → all expected tools called (rule-based)")
     print("    output_present     → agent produced ≥50 char answer (rule-based)")
     print("    shopping_list      → shopping list present when needed (rule-based)")
-    print("    dietary_compliance → recipe respects dietary restrictions (LLM)")
-    print("    time_constraint    → recipe fits time limit (LLM)")
-    print("    recipe_present     → output contains a concrete recipe (LLM)")
-    print("    actionable_steps   → instructions are clear enough to follow (LLM)")
-    print("    serving_size       → recipe serves the correct number (LLM)")
+    print("    dietary_compliance         → recipe respects dietary restrictions (LLM)")
+    print("    time_constraint            → recipe fits time limit (LLM)")
+    print("    recipe_completeness_category → response shape: complete / incomplete / deferral / … (LLM, string)")
+    print("    recipe_present              → output contains a concrete recipe (LLM)")
+    print("    actionable_steps            → instructions are clear enough to follow (LLM)")
+    print("    serving_size                → recipe serves the correct number (LLM)")
     print("\n  -> Open Langfuse > Datasets > FoodPlannerEval")
     print(f"     to inspect the '{experiment_name}' run.")
     print("  -> Green light: proceed to Phase 5 (analysis + final report).")
