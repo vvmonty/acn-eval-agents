@@ -175,6 +175,20 @@ def _build_llm_judges() -> list:
         rubric_markdown=RUBRICS_DIR / "recipe_completeness.md",
     )
 
+    completeness_strict = create_llm_as_judge_evaluator(
+        name="recipe_completeness_strict",
+        model_config=judge_config,
+        prompt_template=FOOD_PLANNER_USER_PROMPT,
+        rubric_markdown=RUBRICS_DIR / "recipe_completeness_strict.md",
+    )
+
+    completeness_lenient = create_llm_as_judge_evaluator(
+        name="recipe_completeness_lenient",
+        model_config=judge_config,
+        prompt_template=FOOD_PLANNER_USER_PROMPT,
+        rubric_markdown=RUBRICS_DIR / "recipe_completeness_lenient.md",
+    )
+
     serving = create_llm_as_judge_evaluator(
         name="serving_size",
         model_config=judge_config,
@@ -182,7 +196,7 @@ def _build_llm_judges() -> list:
         rubric_markdown=RUBRICS_DIR / "serving_size.md",
     )
 
-    return [dietary, time_limit, completeness, serving]
+    return [dietary, time_limit, completeness, completeness_strict, completeness_lenient, serving]
 
 
 # ──────────────────────────────────────────────────────────────
@@ -282,6 +296,8 @@ async def _main(
         "dietary_compliance.md",
         "time_constraint.md",
         "recipe_completeness.md",
+        "recipe_completeness_strict.md",
+        "recipe_completeness_lenient.md",
         "serving_size.md",
     ]
     missing_rubrics = [f for f in rubric_files if not (RUBRICS_DIR / f).exists()]
@@ -293,7 +309,7 @@ async def _main(
             missing_rubrics,
         )
         sys.exit(1)
-    logger.info("All 4 rubric files found.")
+    logger.info("All 6 rubric files found.")
 
     # ── 2. Set up task ──
     task = FoodPlannerTask()
@@ -329,9 +345,10 @@ async def _main(
             name=experiment_name,
             description=(
                 "Phase 4 full evaluation — FoodPlanner agent on 30 ground truth queries. "
-                "3 rule-based + 5 LLM-as-judge evaluators "
+                "3 rule-based + 7 LLM-as-judge evaluators "
                 "(dietary_compliance, time_constraint, recipe_present, "
-                "actionable_steps, serving_size)."
+                "actionable_steps, recipe_present_strict, actionable_steps_strict, "
+                "recipe_present_lenient, actionable_steps_lenient, serving_size)."
             ),
             task=task.run,
             evaluators=all_evaluators,
@@ -359,6 +376,10 @@ async def _main(
     print("    time_constraint    → recipe fits time limit (LLM)")
     print("    recipe_present     → output contains a concrete recipe (LLM)")
     print("    actionable_steps   → instructions are clear enough to follow (LLM)")
+    print("    recipe_present_strict   → output contains a perfectly formed recipe with full details (LLM)")
+    print("    actionable_steps_strict → instructions have precise measurements and doneness cues (LLM)")
+    print("    recipe_present_lenient  → output mentions at least a dish idea and some basic steps (LLM)")
+    print("    actionable_steps_lenient→ instructions provide any general guidance (LLM)")
     print("    serving_size       → recipe serves the correct number (LLM)")
     print("\n  -> Open Langfuse > Datasets > FoodPlannerEval")
     print(f"     to inspect the '{experiment_name}' run.")
