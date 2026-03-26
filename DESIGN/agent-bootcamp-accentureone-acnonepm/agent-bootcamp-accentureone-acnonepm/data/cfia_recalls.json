@@ -1,0 +1,129 @@
+{
+  "source": {
+    "name": "CFIA curated recalls",
+    "country": "CA",
+    "retrieved_at": "2026-03-25T00:00:00Z",
+    "notes": "Manually curated recall data for local ingredient matching."
+  },
+  "schema_version": "1.0",
+  "active_recalls": [
+    {
+      "recall_date": "2026-03-20",
+      "brand": "European Meats & Deli",
+      "product_name": "Long Nakki and Short Nakki Sausages",
+      "reason": "Undeclared mustard",
+      "distribution": "Ontario",
+      "hazard_classification": "Class 1",
+      "ingredient_keywords": ["sausage", "sausages", "mustard"],
+      "ingredient_synonyms": {
+        "sausage": ["nakki", "hot dog", "smoked sausage"],
+        "mustard": ["mustard powder", "yellow mustard", "dijon"]
+      }
+    },
+    {
+      "recall_date": "2026-03-19",
+      "brand": "Salem Foods",
+      "product_name": "7 Spices and Chicken Shawarma Spices",
+      "reason": "Undeclared wheat",
+      "distribution": "National",
+      "hazard_classification": "Class 1",
+      "ingredient_keywords": ["shawarma spice", "spice mix", "wheat"],
+      "ingredient_synonyms": {
+        "shawarma spice": ["shawarma spices", "7 spices", "seven spice"],
+        "wheat": ["flour", "breadcrumbs"]
+      }
+    },
+    {
+      "recall_date": "2026-03-18",
+      "brand": "Auricchio",
+      "product_name": "Taleggio D.O.P. Cheese",
+      "reason": "Microbial contamination - Listeria monocytogenes",
+      "distribution": "National",
+      "hazard_classification": "Class 1",
+      "ingredient_keywords": ["taleggio", "cheese"],
+      "ingredient_synonyms": {
+        "taleggio": ["taleggio cheese"],
+        "cheese": ["soft cheese"]
+      }
+    },
+    {
+      "recall_date": "2026-03-17",
+      "brand": "Ajinomoto",
+      "product_name": "Yakitori Chicken with Fried Rice / Tokyo Style Shoyu Ramen",
+      "reason": "Extraneous material - Pieces of glass",
+      "distribution": "National (including Costco locations)",
+      "hazard_classification": "Class 2",
+      "ingredient_keywords": ["yakitori chicken", "fried rice", "ramen", "shoyu ramen"],
+      "ingredient_synonyms": {
+        "yakitori chicken": ["chicken skewers"],
+        "fried rice": ["rice"],
+        "ramen": ["noodles", "shoyu ramen"]
+      }
+    },
+    {
+      "recall_date": "2026-03-17",
+      "brand": "Delight Chocolate",
+      "product_name": "Dairy-free Chocolate Ice Cream (Vegan)",
+      "reason": "Undeclared milk",
+      "distribution": "Ontario",
+      "hazard_classification": "Class 1",
+      "ingredient_keywords": ["chocolate ice cream", "ice cream", "milk"],
+      "ingredient_synonyms": {
+        "ice cream": ["frozen dessert"],
+        "milk": ["dairy", "whole milk"]
+      }
+    },
+    {
+      "recall_date": "2026-03-11",
+      "brand": "Katilo",
+      "product_name": "Classic Roomy Cheese",
+      "reason": "Microbial contamination - Salmonella",
+      "distribution": "Ontario, Quebec, New Brunswick",
+      "hazard_classification": "Class 1",
+      "ingredient_keywords": ["roomy cheese", "cheese"],
+      "ingredient_synonyms": {
+        "roomy cheese": ["romy cheese"],
+        "cheese": ["semi-hard cheese"]
+      }
+    },
+    {
+      "recall_date": "2026-03-05",
+      "brand": "Various (Rancho Vignola, Country Grocer, etc.)",
+      "product_name": "Macadamia Nuts and Macadamia-containing products",
+      "reason": "Microbial contamination - Salmonella",
+      "distribution": "Alberta, British Columbia, Online",
+      "hazard_classification": "Class 1",
+      "ingredient_keywords": ["macadamia", "macadamia nuts"],
+      "ingredient_synonyms": {
+        "macadamia": ["macadamia nut", "macadamias"]
+      }
+    },
+    {
+      "recall_date": "2026-02-23",
+      "brand": "Kendamil",
+      "product_name": "Infant Formula with Whole Milk",
+      "reason": "Microbial contamination - Cereulide toxin",
+      "distribution": "National",
+      "hazard_classification": "Class 1",
+      "ingredient_keywords": ["infant formula", "formula", "whole milk", "milk"],
+      "ingredient_synonyms": {
+        "infant formula": ["baby formula"],
+        "milk": ["whole milk"]
+      }
+    },
+    {
+      "recall_date": "2026-01-25",
+      "brand": "Pillsbury",
+      "product_name": "Various Pizza Pops (3 Cheese, Pepperoni, Deluxe)",
+      "reason": "Microbial contamination - E. coli O26",
+      "distribution": "National",
+      "hazard_classification": "Class 1",
+      "ingredient_keywords": ["pizza pops", "pepperoni", "cheese pizza", "pizza"],
+      "ingredient_synonyms": {
+        "pizza pops": ["pizza pop"],
+        "pepperoni": ["salami"],
+        "pizza": ["frozen pizza snack"]
+      }
+    }
+  ]
+}

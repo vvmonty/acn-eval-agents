@@ -14,6 +14,7 @@ from src.utils.tools.gemini_grounding import google_search_grounded_sync
 
 # Path to the recipe dataset
 RECIPE_DATA_PATH = os.path.join(os.path.dirname(__file__), '../../data/recipes.csv')
+CFIA_RECALLS_PATH = os.path.join(os.path.dirname(__file__), '../../data/cfia_recalls.json')
 
 # --- 1. STRICT PYDANTIC MODELS FOR VALIDATION ---
 class Nutrients(BaseModel):
@@ -116,9 +117,52 @@ def check_cfia_recalls(ingredients_json: str) -> str:
     """SAFETY CHECK: Verifies ingredients against CFIA Food Recalls."""
     try:
         ingredients = json.loads(ingredients_json)
-        recalls = [i for i in ingredients if "romaine" in i.lower()]
-        return f"FAIL: Active recall on {recalls}" if recalls else "PASS"
-    except: return "ERROR: Invalid ingredients format."
+        if not isinstance(ingredients, list) or not all(isinstance(item, str) for item in ingredients):
+            return "ERROR: Invalid ingredients format. Expected a JSON list of strings."
+
+        if not os.path.exists(CFIA_RECALLS_PATH):
+            return "ERROR: CFIA recall dataset missing."
+
+        with open(CFIA_RECALLS_PATH, 'r', encoding='utf-8') as recall_file:
+            recall_data = json.load(recall_file)
+
+        normalized_ingredients = [ingredient.strip().lower() for ingredient in ingredients if ingredient.strip()]
+        matched_ingredients = set()
+        matched_recalls = []
+
+        for recall in recall_data.get('active_recalls', []):
+            keywords = {keyword.strip().lower() for keyword in recall.get('ingredient_keywords', []) if keyword.strip()}
+            for synonym_list in recall.get('ingredient_synonyms', {}).values():
+                keywords.update(synonym.strip().lower() for synonym in synonym_list if synonym.strip())
+
+            recall_matches = [
+                ingredient for ingredient in normalized_ingredients
+                if any(keyword in ingredient or ingredient in keyword for keyword in keywords)
+            ]
+            if recall_matches:
+                matched_ingredients.update(recall_matches)
+                matched_recalls.append(
+                    {
+                        'recall_date': recall.get('recall_date'),
+                        'brand': recall.get('brand'),
+                        'product_name': recall.get('product_name'),
+                        'reason': recall.get('reason'),
+                        'distribution': recall.get('distribution'),
+                        'hazard_classification': recall.get('hazard_classification'),
+                    }
+                )
+
+        return json.dumps(
+            {
+                'status': 'FAIL' if matched_recalls else 'PASS',
+                'matched_ingredients': sorted(matched_ingredients),
+                'matched_recalls': matched_recalls,
+            }
+        )
+    except json.JSONDecodeError:
+        return "ERROR: Invalid ingredients format."
+    except Exception as exc:
+        return f"ERROR: Failed recall check: {exc}"
 
 
 @observe()
