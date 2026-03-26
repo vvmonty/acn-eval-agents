@@ -1,0 +1,1053 @@
+{
+  "_meta": {
+    "description": "Ground truth dataset for Food Planner Agent evaluation — 25% strictness variant",
+    "total_queries": 30,
+    "source_csv": "data/culinary_agent_queries_200_with_ids.csv",
+    "agent_tools": [
+      "get_local_recipe_type",
+      "fetch_local_recipe",
+      "check_cfia_recalls",
+      "modify_recipe",
+      "prepare_shopping_list",
+      "search_web"
+    ],
+    "test_categories": {
+      "baseline": "No dietary restrictions — verifies core tool chain",
+      "dietary_single": "One dietary restriction — verifies modify_recipe for a single constraint",
+      "dietary_multiple": "Two or more restrictions — verifies stacked constraint handling",
+      "tight_time": "Time limit ≤ 25 min — high chance of search_web fallback",
+      "large_serving": "≥ 10 servings — verifies recipe scaling",
+      "special_diet": "Non-standard diet labels (keto, low-sodium, high-fiber, halal, etc.)"
+    },
+    "trajectory_notes": {
+      "required_tools_always": [
+        "get_local_recipe_type",
+        "fetch_local_recipe",
+        "check_cfia_recalls"
+      ],
+      "modify_recipe_when": "dietary restrictions present OR serving size requires adjustment",
+      "prepare_shopping_list_when": "query explicitly requests a shopping list",
+      "search_web_when": "fetch_local_recipe returns NO_MATCH (local DB has no suitable recipe)"
+    },
+    "strictness_level": "25%",
+    "strictness_notes": "only get_local_recipe_type required, pass criteria reduced to recipe_present only"
+  },
+  "items": [
+    {
+      "id": "query_1",
+      "test_category": "baseline",
+      "input": "Recipe request (Breakfast and Brunch): Please suggest a one-pot recipe featuring shakshuka. Make it serve 5 people. Total time must be under 50 minutes. Ensure it reheats well for leftovers. Include a make-ahead tip. Include a timeline (prep vs cook time).",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Breakfast and Brunch",
+          "cooking_method": "one-pot",
+          "main_ingredient": "shakshuka",
+          "max_time_minutes": 50,
+          "servings": 5,
+          "dietary_restrictions": [],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required to scale to 5 servings. search_web only if fetch_local_recipe returns NO_MATCH."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_5",
+      "test_category": "dietary_single",
+      "input": "Recipe request (Mexican): Please suggest a slow-cooker (but keep under the time limit) recipe featuring tacos. Dietary restrictions/allergies: vegan. Make it serve 6 people. Total time must be under 2 hours 30 minutes. Ensure it reheats well for leftovers. Include approximate calories per serving. Include a timeline (prep vs cook time).",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Mexican",
+          "cooking_method": "slow-cooker",
+          "main_ingredient": "tacos",
+          "max_time_minutes": 150,
+          "servings": 6,
+          "dietary_restrictions": [
+            "vegan"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required to apply vegan constraint and scale to 6 servings."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_7",
+      "test_category": "dietary_multiple",
+      "input": "Recipe request (BBQ & Grilling): Please suggest a oven-baked recipe featuring grilled veggies. Dietary restrictions/allergies: dairy-free, no seafood. Make it serve 5 people. Total time must be under 25 minutes. Make it kid-friendly. Include approximate calories per serving. Provide metric and imperial measurements.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "BBQ and Grilling",
+          "cooking_method": "oven-baked",
+          "main_ingredient": "grilled veggies",
+          "max_time_minutes": 25,
+          "servings": 5,
+          "dietary_restrictions": [
+            "dairy-free",
+            "no seafood"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Tight time limit (25 min) increases probability of search_web fallback. modify_recipe required for dairy-free and no-seafood constraints."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_9",
+      "test_category": "special_diet",
+      "input": "Recipe request (Desserts): Please suggest a one-pot recipe featuring pudding. Dietary restrictions/allergies: low-carb. Make it serve 4 people. Total time must be under 40 minutes. Include a short shopping list. Use an Instant Pot if it helps (still under the time limit). Add a short explanation of why each key step matters.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Desserts",
+          "cooking_method": "one-pot",
+          "main_ingredient": "pudding",
+          "max_time_minutes": 40,
+          "servings": 4,
+          "dietary_restrictions": [
+            "low-carb"
+          ],
+          "requires_shopping_list": true
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Shopping list explicitly requested. modify_recipe required for low-carb adaptation."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_10",
+      "test_category": "dietary_single",
+      "input": "Recipe request (Main Dishes): Please suggest a oven-baked recipe featuring chicken and rice. Dietary restrictions/allergies: gluten-free. Make it serve 1 people. Total time must be under 1 hour 10 minutes. Provide substitutions for any uncommon ingredients. Make it one-pan to minimize cleanup. Provide metric and imperial measurements.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Main Dishes",
+          "cooking_method": "oven-baked",
+          "main_ingredient": "chicken and rice",
+          "max_time_minutes": 70,
+          "servings": 1,
+          "dietary_restrictions": [
+            "gluten-free"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required to apply gluten-free constraint."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_12",
+      "test_category": "special_diet",
+      "input": "Recipe request (Side Dish): Please suggest a one-pot recipe featuring rice pilaf. Dietary restrictions/allergies: low-sodium. Make it serve 8 people. Total time must be under 2 hours 15 minutes. Keep it budget-friendly. Use an Instant Pot if it helps (still under the time limit). Include suggested side pairings.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Side Dish",
+          "cooking_method": "one-pot",
+          "main_ingredient": "rice pilaf",
+          "max_time_minutes": 135,
+          "servings": 8,
+          "dietary_restrictions": [
+            "low-sodium"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required for low-sodium adaptation and scaling to 8 servings."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_21",
+      "test_category": "dietary_multiple",
+      "input": "Recipe request (Mexican): Please suggest a one-pot recipe featuring burrito bowl. Dietary restrictions/allergies: no red meat, dairy-free. Make it serve 6 people. Total time must be under 1 hour 40 minutes. Provide substitutions for any uncommon ingredients. Ensure it reheats well for leftovers. Give clear step-by-step instructions.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Mexican",
+          "cooking_method": "one-pot",
+          "main_ingredient": "burrito bowl",
+          "max_time_minutes": 100,
+          "servings": 6,
+          "dietary_restrictions": [
+            "no red meat",
+            "dairy-free"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required for both no red meat and dairy-free constraints."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_22",
+      "test_category": "large_serving",
+      "input": "Recipe request (Main Dishes): Please suggest a grill recipe featuring chicken and rice. Dietary restrictions/allergies: vegetarian. Make it serve 12 people. Total time must be under 50 minutes. Include a make-ahead tip. Include a short shopping list. Give clear step-by-step instructions.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Main Dishes",
+          "cooking_method": "grill",
+          "main_ingredient": "chicken and rice",
+          "max_time_minutes": 50,
+          "servings": 12,
+          "dietary_restrictions": [
+            "vegetarian"
+          ],
+          "requires_shopping_list": true
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Shopping list explicitly requested. modify_recipe required for vegetarian adaptation (no chicken) and scaling to 12 servings."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_26",
+      "test_category": "baseline",
+      "input": "Recipe request (BBQ & Grilling): Please suggest a one-pot recipe featuring grilled shrimp. Make it serve 6 people. Total time must be under 30 minutes. Provide substitutions for any uncommon ingredients. Use an Instant Pot if it helps (still under the time limit). Include suggested side pairings.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "BBQ and Grilling",
+          "cooking_method": "one-pot",
+          "main_ingredient": "grilled shrimp",
+          "max_time_minutes": 30,
+          "servings": 6,
+          "dietary_restrictions": [],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "No dietary restrictions. modify_recipe may be called for serving size scaling. Tight 30 min limit may trigger search_web."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_29",
+      "test_category": "tight_time",
+      "input": "Recipe request (Sauces and Condiments): Please suggest a sheet-pan recipe featuring pesto. Make it serve 8 people. Total time must be under 20 minutes. Use pantry staples where possible. Use no more than 10 ingredients (excluding salt, pepper, oil). Provide metric and imperial measurements.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Sauces and Condiments",
+          "cooking_method": "sheet-pan",
+          "main_ingredient": "pesto",
+          "max_time_minutes": 20,
+          "servings": 8,
+          "dietary_restrictions": [],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Very tight 20 min limit — high probability of search_web fallback if no local pesto recipe. No dietary restrictions."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_32",
+      "test_category": "dietary_multiple",
+      "input": "Recipe request (Seafood): Please suggest a stovetop recipe featuring salmon tacos. Dietary restrictions/allergies: gluten-free, no mushrooms. Make it serve 12 people. Total time must be under 25 minutes. Include a make-ahead tip. Include a short shopping list. Add a short explanation of why each key step matters.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Seafood",
+          "cooking_method": "stovetop",
+          "main_ingredient": "salmon tacos",
+          "max_time_minutes": 25,
+          "servings": 12,
+          "dietary_restrictions": [
+            "gluten-free",
+            "no mushrooms"
+          ],
+          "requires_shopping_list": true
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Tight 25 min limit + large serving (12) + two restrictions + shopping list. High complexity query."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_34",
+      "test_category": "special_diet",
+      "input": "Recipe request (Soup Recipes): Please suggest a slow-cooker (but keep under the time limit) recipe featuring pumpkin soup. Dietary restrictions/allergies: halal. Make it serve 5 people. Total time must be under 45 minutes. Provide substitutions for any uncommon ingredients. Make it kid-friendly. Include suggested side pairings.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Soup Recipes",
+          "cooking_method": "slow-cooker",
+          "main_ingredient": "pumpkin soup",
+          "max_time_minutes": 45,
+          "servings": 5,
+          "dietary_restrictions": [
+            "halal"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required to verify halal compliance (no pork derivatives)."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_40",
+      "test_category": "tight_time",
+      "input": "Recipe request (Seafood): Please suggest a slow-cooker (but keep under the time limit) recipe featuring baked cod. Dietary restrictions/allergies: high-fiber. Make it serve 1 people. Total time must be under 25 minutes. Make it kid-friendly. Use pantry staples where possible. Give clear step-by-step instructions.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Seafood",
+          "cooking_method": "slow-cooker",
+          "main_ingredient": "baked cod",
+          "max_time_minutes": 25,
+          "servings": 1,
+          "dietary_restrictions": [
+            "high-fiber"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Tight 25 min + slow-cooker combination is likely infeasible. search_web fallback very likely."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_41",
+      "test_category": "dietary_single",
+      "input": "Recipe request (Main Dishes): Please suggest a one-pot recipe featuring lentil curry. Dietary restrictions/allergies: tree-nut allergy. Make it serve 5 people. Total time must be under 40 minutes. Ensure it reheats well for leftovers. Use no more than 10 ingredients (excluding salt, pepper, oil). Include a timeline (prep vs cook time).",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Main Dishes",
+          "cooking_method": "one-pot",
+          "main_ingredient": "lentil curry",
+          "max_time_minutes": 40,
+          "servings": 5,
+          "dietary_restrictions": [
+            "tree-nut allergy"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required to remove tree-nut ingredients (e.g., cashew cream)."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_47",
+      "test_category": "special_diet",
+      "input": "Recipe request (Holidays and Events Recipes): Please suggest a oven-baked recipe featuring holiday brunch. Dietary restrictions/allergies: low-carb. Make it serve 1 people. Total time must be under 45 minutes. Include a make-ahead tip. Make it kid-friendly. Provide metric and imperial measurements.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Holidays and Events Recipes",
+          "cooking_method": "oven-baked",
+          "main_ingredient": "holiday brunch",
+          "max_time_minutes": 45,
+          "servings": 1,
+          "dietary_restrictions": [
+            "low-carb"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required for low-carb adaptation."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_48",
+      "test_category": "dietary_multiple",
+      "input": "Recipe request (Seafood): Please suggest a one-pot recipe featuring baked cod. Dietary restrictions/allergies: dairy-free, low-carb. Make it serve 12 people. Total time must be under 1 hour 10 minutes. Keep it budget-friendly. Make it one-pan to minimize cleanup. Provide metric and imperial measurements.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Seafood",
+          "cooking_method": "one-pot",
+          "main_ingredient": "baked cod",
+          "max_time_minutes": 70,
+          "servings": 12,
+          "dietary_restrictions": [
+            "dairy-free",
+            "low-carb"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required for dairy-free + low-carb. Large serving (12) requires scaling."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_49",
+      "test_category": "special_diet",
+      "input": "Recipe request (BBQ & Grilling): Please suggest a grill recipe featuring grilled chicken. Dietary restrictions/allergies: halal. Make it serve 8 people. Total time must be under 1 hour 15 minutes. Use no more than 10 ingredients (excluding salt, pepper, oil). Make it one-pan to minimize cleanup. Include a timeline (prep vs cook time).",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "BBQ and Grilling",
+          "cooking_method": "grill",
+          "main_ingredient": "grilled chicken",
+          "max_time_minutes": 75,
+          "servings": 8,
+          "dietary_restrictions": [
+            "halal"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required to verify halal-compliant ingredients (no pork, halal-certified chicken)."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_50",
+      "test_category": "baseline",
+      "input": "Recipe request (Breakfast and Brunch): Please suggest a grill recipe featuring frittata. Make it serve 4 people. Total time must be under 55 minutes. Use no more than 10 ingredients (excluding salt, pepper, oil). Use pantry staples where possible. Include a timeline (prep vs cook time).",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Breakfast and Brunch",
+          "cooking_method": "grill",
+          "main_ingredient": "frittata",
+          "max_time_minutes": 55,
+          "servings": 4,
+          "dietary_restrictions": [],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "No dietary restrictions. Serving size 4 is standard — modify_recipe may not be required."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_51",
+      "test_category": "dietary_single",
+      "input": "Recipe request (Side Dish): Please suggest a one-pot recipe featuring quinoa. Dietary restrictions/allergies: no garlic. Make it serve 4 people. Total time must be under 1 hour 15 minutes. Avoid deep frying. Make it one-pan to minimize cleanup. Provide metric and imperial measurements.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Side Dish",
+          "cooking_method": "one-pot",
+          "main_ingredient": "quinoa",
+          "max_time_minutes": 75,
+          "servings": 4,
+          "dietary_restrictions": [
+            "no garlic"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required to remove garlic from recipe."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_53",
+      "test_category": "special_diet",
+      "input": "Recipe request (Cuisine): Please suggest a air fryer recipe featuring Italian-style. Dietary restrictions/allergies: keto-friendly. Make it serve 8 people. Total time must be under 40 minutes. Use no more than 10 ingredients (excluding salt, pepper, oil). Use an Instant Pot if it helps (still under the time limit). Give clear step-by-step instructions.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Cuisine",
+          "cooking_method": "air fryer",
+          "main_ingredient": "Italian-style",
+          "max_time_minutes": 40,
+          "servings": 8,
+          "dietary_restrictions": [
+            "keto-friendly"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required for keto adaptation (no pasta, no starchy ingredients)."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_66",
+      "test_category": "dietary_single",
+      "input": "Recipe request (Soups, Stews and Chili Recipes): Please suggest a air fryer recipe featuring vegetarian chili. Dietary restrictions/allergies: vegetarian. Make it serve 4 people. Total time must be under 55 minutes. Use no more than 10 ingredients (excluding salt, pepper, oil). Avoid deep frying. Include suggested side pairings.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Soups, Stews and Chili Recipes",
+          "cooking_method": "air fryer",
+          "main_ingredient": "vegetarian chili",
+          "max_time_minutes": 55,
+          "servings": 4,
+          "dietary_restrictions": [
+            "vegetarian"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required to confirm no meat. Vegetarian chili may already be in local DB."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_69",
+      "test_category": "dietary_multiple",
+      "input": "Recipe request (Mexican): Please suggest a sheet-pan recipe featuring quesadillas. Dietary restrictions/allergies: shellfish allergy, vegetarian. Make it serve 8 people. Total time must be under 55 minutes. Ensure it reheats well for leftovers. Use an Instant Pot if it helps (still under the time limit). Give clear step-by-step instructions.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Mexican",
+          "cooking_method": "sheet-pan",
+          "main_ingredient": "quesadillas",
+          "max_time_minutes": 55,
+          "servings": 8,
+          "dietary_restrictions": [
+            "shellfish allergy",
+            "vegetarian"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required for vegetarian + shellfish-free constraints."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_73",
+      "test_category": "tight_time",
+      "input": "Recipe request (Mexican): Please suggest a one-pot recipe featuring pozole. Dietary restrictions/allergies: high-fiber. Make it serve 4 people. Total time must be under 25 minutes. Include a short shopping list. Provide substitutions for any uncommon ingredients. Give clear step-by-step instructions.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Mexican",
+          "cooking_method": "one-pot",
+          "main_ingredient": "pozole",
+          "max_time_minutes": 25,
+          "servings": 4,
+          "dietary_restrictions": [
+            "high-fiber"
+          ],
+          "requires_shopping_list": true
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Very tight 25 min for pozole — search_web fallback expected. Shopping list required."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_77",
+      "test_category": "dietary_multiple",
+      "input": "Recipe request (Sauces and Condiments): Please suggest a air fryer recipe featuring peanut sauce. Dietary restrictions/allergies: high-fiber, gluten-free. Make it serve 5 people. Total time must be under 1 hour 10 minutes. Make it kid-friendly. Include approximate calories per serving. Add a short explanation of why each key step matters.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Sauces and Condiments",
+          "cooking_method": "air fryer",
+          "main_ingredient": "peanut sauce",
+          "max_time_minutes": 70,
+          "servings": 5,
+          "dietary_restrictions": [
+            "high-fiber",
+            "gluten-free"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required for gluten-free (no soy sauce with wheat) and high-fiber adaptation."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_81",
+      "test_category": "tight_time",
+      "input": "Recipe request (Sauces and Condiments): Please suggest a sheet-pan recipe featuring peanut sauce. Dietary restrictions/allergies: no seafood. Make it serve 1 people. Total time must be under 25 minutes. Ensure it reheats well for leftovers. Provide substitutions for any uncommon ingredients. Provide metric and imperial measurements.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Sauces and Condiments",
+          "cooking_method": "sheet-pan",
+          "main_ingredient": "peanut sauce",
+          "max_time_minutes": 25,
+          "servings": 1,
+          "dietary_restrictions": [
+            "no seafood"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Tight 25 min. modify_recipe for no-seafood restriction."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_85",
+      "test_category": "baseline",
+      "input": "Recipe request (Soups, Stews and Chili Recipes): Please suggest a stovetop recipe featuring chicken stew. Make it serve 4 people. Total time must be under 1 hour. Keep it budget-friendly. Make it kid-friendly. Give clear step-by-step instructions.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Soups, Stews and Chili Recipes",
+          "cooking_method": "stovetop",
+          "main_ingredient": "chicken stew",
+          "max_time_minutes": 60,
+          "servings": 4,
+          "dietary_restrictions": [],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Clean baseline: no restrictions, standard serving size of 4, common recipe type. High probability of local DB hit."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_86",
+      "test_category": "tight_time",
+      "input": "Recipe request (Side Dish): Please suggest a slow-cooker (but keep under the time limit) recipe featuring roasted carrots. Dietary restrictions/allergies: no spicy food. Make it serve 1 people. Total time must be under 20 minutes. Keep it budget-friendly. Include a short shopping list. Include suggested side pairings.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Side Dish",
+          "cooking_method": "slow-cooker",
+          "main_ingredient": "roasted carrots",
+          "max_time_minutes": 20,
+          "servings": 1,
+          "dietary_restrictions": [
+            "no spicy food"
+          ],
+          "requires_shopping_list": true
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Very tight 20 min for slow-cooker — essentially infeasible. search_web fallback expected. Shopping list required."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_89",
+      "test_category": "dietary_multiple",
+      "input": "Recipe request (Cuisine): Please suggest a sheet-pan recipe featuring Italian-style. Dietary restrictions/allergies: dairy-free, tree-nut allergy. Make it serve 5 people. Total time must be under 25 minutes. Use no more than 10 ingredients (excluding salt, pepper, oil). Make it one-pan to minimize cleanup. Include a timeline (prep vs cook time).",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Cuisine",
+          "cooking_method": "sheet-pan",
+          "main_ingredient": "Italian-style",
+          "max_time_minutes": 25,
+          "servings": 5,
+          "dietary_restrictions": [
+            "dairy-free",
+            "tree-nut allergy"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "Tight 25 min + two restrictions. modify_recipe required for dairy-free (no cheese/cream) and tree-nut-free (no pine nuts)."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_93",
+      "test_category": "large_serving",
+      "input": "Recipe request (Quick Bread Recipes): Please suggest a one-pot recipe featuring cornbread. Make it serve 10 people. Total time must be under 1 hour. Make it kid-friendly. Ensure it reheats well for leftovers. Include suggested side pairings.",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Quick Bread Recipes",
+          "cooking_method": "one-pot",
+          "main_ingredient": "cornbread",
+          "max_time_minutes": 60,
+          "servings": 10,
+          "dietary_restrictions": [],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required to scale to 10 servings. No dietary restrictions."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    },
+    {
+      "id": "query_95",
+      "test_category": "dietary_multiple",
+      "input": "Recipe request (Side Dish): Please suggest a one-pot recipe featuring roasted carrots. Dietary restrictions/allergies: gluten-free, vegan. Make it serve 3 people. Total time must be under 55 minutes. Keep it budget-friendly. Make it kid-friendly. Include a timeline (prep vs cook time).",
+      "expected_output": {
+        "constraints": {
+          "recipe_category": "Side Dish",
+          "cooking_method": "one-pot",
+          "main_ingredient": "roasted carrots",
+          "max_time_minutes": 55,
+          "servings": 3,
+          "dietary_restrictions": [
+            "gluten-free",
+            "vegan"
+          ],
+          "requires_shopping_list": false
+        },
+        "trajectory": {
+          "required_tools": [
+            "get_local_recipe_type"
+          ],
+          "optional_tools": [
+            "fetch_local_recipe",
+            "check_cfia_recalls",
+            "modify_recipe",
+            "prepare_shopping_list",
+            "search_web"
+          ],
+          "notes": "modify_recipe required for gluten-free + vegan (no butter, no animal products, no gluten)."
+        },
+        "pass_criteria": {
+          "recipe_present": true
+        }
+      }
+    }
+  ]
+}
