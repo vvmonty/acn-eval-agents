@@ -104,6 +104,7 @@ def load_and_transform_ground_truth(path: Path) -> list[dict]:
             "input": item["input"],
             "expected_output": item["expected_output"],
             "metadata": {
+                "id": item["id"],
                 "test_category": item.get("test_category", "unknown"),
                 "max_time_minutes": constraints.get("max_time_minutes"),
                 "servings": constraints.get("servings"),
